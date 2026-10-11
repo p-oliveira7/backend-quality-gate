@@ -266,6 +266,10 @@ Saída ilustrativa para uma violação comprovada:
 
 `operator_action_required: false` significa que a análise pode concluir e avançar sem uma decisão humana. Não elimina a necessidade de corrigir a violação. Aceites e exceções, quando permitidos, exigem autorização formal, justificativa e escopo.
 
+## Planejamento detalhado de Security
+
+O [Security Gate de APIs](docs/security-planning.md) detalha o catálogo OWASP API Security Top 10 (edição 2023), quatro frentes contextuais complementares, cobertura externa, scripts propostos, regras de triagem, algoritmo e exemplo de encaminhamento. É documentação de planejamento, sem scripts executáveis ou alegação de cobertura comprovada no pipeline corporativo.
+
 ## Política final
 
 Precedência proposta: `BLOCK` → `REVIEW_REQUIRED` → `WARN` → `PASS`.
