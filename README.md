@@ -25,25 +25,120 @@ Uma única skill/orquestrador executa três etapas sequenciais, com contexto e e
 
 A consolidação e a política final pertencem à mesma skill. Não existe uma quarta etapa semântica ou um quarto agente decisor. Checkmarx, SonarQube, mutation testing e checks técnicos externos continuam responsáveis por suas verificações; o gate correlaciona esses resultados com o contexto de negócio.
 
-## Fluxo geral
+## Navegação do planejamento
+
+- [Intent: scripts, categorias e algoritmo](#exemplo-detalhado-intent-verification).
+- [Security: OWASP API, cobertura externa e triagem](docs/security-planning.md).
+- [Coverage: cenários, testes, asserções e execução](docs/coverage-planning.md).
+
+## Fluxo completo em detalhe
+
+O diagrama mostra as três etapas dentro de uma única skill. Cada uma aplica um funil local; candidatos sem sustentação não viram violações confirmadas, mas obrigações e incertezas relevantes permanecem registradas. A evidência compartilhada é referenciada nas passagens entre etapas.
 
 ```mermaid
 flowchart TD
-    INPUT["Mudança, requisitos e evidências externas"] --> INTENT["Intent + funil local"]
-    INTENT --> C1{"Próxima etapa pode executar corretamente?"}
-    C1 -->|Sim| SECURITY["Security + funil local"]
-    C1 -->|Não| Q1["Pergunta mínima para destravar"]
-    Q1 --> C1
-    SECURITY --> C2{"Próxima etapa pode executar corretamente?"}
-    C2 -->|Sim| COVERAGE["Coverage + funil local"]
-    C2 -->|Não| Q2["Pergunta mínima para destravar"]
-    Q2 --> C2
-    COVERAGE --> CONSOLIDATE["Consolidar achados e obrigações"]
-    CONSOLIDATE --> POLICY["Política determinística versionada"]
-    POLICY --> RESULT["PASS / WARN / REVIEW_REQUIRED / BLOCK"]
+    INPUT["Diff e referência da mudança<br/>BRD, SPEC, TDD, ADR, contratos e inventário"] --> I1
+    EXT["Checkmarx, Sonar, mutation testing e pipeline<br/>Estado, escopo, referência e evidência"] --> S3
+    EXT --> T5
+
+    subgraph INTENT["1. Intent Verification"]
+        I1["Listar obrigações e comportamentos afetados"] --> I2["Gerar candidatos semânticos<br/>Contradição, omissão, mudança e conflito"]
+        I2 --> I3["Validar referências, aplicabilidade e impacto"]
+        I3 --> I4["Investigar sustentação<br/>Excluir diferença apenas textual com motivo"]
+        I4 --> I5["Agrupar causas e classificar por regras<br/>Preservar obrigações não verificadas"]
+        I5 --> IR["Resultado: requisitos, achados,<br/>evidências, pendências e bloqueios"]
+    end
+    IR --> D1{"Security pode analisar corretamente?"}
+    D1 -->|Sim| S1
+    D1 -->|Não| R1["Investigar a dependência indispensável<br/>nas fontes disponíveis"]
+    R1 --> F1{"Resolvida?"}
+    F1 -->|Sim| U1["Atualizar contexto e resultados afetados"]
+    F1 -->|Não| Q1["Pergunta mínima ao operador<br/>Sem aprovação dos achados por etapa"]
+    Q1 --> U1
+    U1 --> D1
+
+    subgraph SECURITY["2. Security Gate"]
+        S1["Mapear atores, objetos, tenants,<br/>controles, estados e fronteiras"] --> S2["Selecionar riscos OWASP API aplicáveis<br/>e frentes contextuais"]
+        S2 --> S3["Validar cobertura externa<br/>Referenciar ou enriquecer sem duplicar"]
+        S3 --> S4["Gerar candidatos contextuais<br/>Validar cenário, controle e consequência"]
+        S4 --> S5["Investigar controles compensatórios<br/>Classificar e agrupar por regras"]
+        S5 --> SR["Resultado: controles, riscos, cenários,<br/>lacunas externas e pendências"]
+    end
+    SR --> D2{"Coverage pode analisar corretamente?"}
+    D2 -->|Sim| T1
+    D2 -->|Não| R2["Investigar a dependência indispensável<br/>nas fontes disponíveis"]
+    R2 --> F2{"Resolvida?"}
+    F2 -->|Sim| U2["Atualizar contexto e resultados afetados"]
+    F2 -->|Não| Q2["Pergunta mínima ao operador"]
+    Q2 --> U2
+    U2 --> D2
+
+    subgraph COVERAGE["3. Test Coverage Gate"]
+        T1["Construir cenários esperados<br/>a partir de Intent e Security"] --> T2["Indexar testes e mapear rastreabilidade"]
+        T2 --> T3["Avaliar sucesso, rejeição, limites,<br/>estados e cenários de segurança"]
+        T3 --> T4["Verificar asserções, fixtures,<br/>mocks e nível de teste"]
+        T4 --> T5["Correlacionar execução por teste e alvo<br/>Distinguir passou, falhou, não rodou e skips"]
+        T5 --> T6["Aplicar regras por cenário<br/>Agrupar lacunas sem apagar obrigações"]
+        T6 --> TR["Matriz: requisito → cenário → teste → resultado<br/>Adequação e execução separadas"]
+    end
+
+    TR --> CONSOLIDATE["Consolidar as três etapas<br/>Correlacionar causas e conservar evidências"]
+    CONSOLIDATE --> POLICY["Política determinística versionada<br/>Mesmos resultados estruturados → mesma decisão"]
+    POLICY --> B{"Bloqueador ou falha/evidência<br/>mandatória impeditiva?"}
+    B -->|Sim| BLOCK["BLOCK"]
+    B -->|Não| R{"Revisão formal ou incerteza<br/>crítica pendente?"}
+    R -->|Sim| REVIEW["REVIEW_REQUIRED"]
+    R -->|Não| W{"Ressalvas permitidas?"}
+    W -->|Sim| WARN["WARN"]
+    W -->|Não| PASS["PASS: obrigações e evidência mínima satisfeitas"]
+    BLOCK --> REPORT["Relatório auditável<br/>Motivos, regras, evidências, ações e pendências"]
+    REVIEW --> REPORT
+    WARN --> REPORT
+    PASS --> REPORT
 ```
 
-Um P0/P1 ou uma falha mandatória não interrompe, por si só, a passagem entre etapas.
+Um P0/P1 ou uma falha mandatória não interrompe, por si só, a passagem entre etapas. Se a resposta indispensável não estiver disponível, a dependência de execução permanece bloqueada; a seta de retorno pressupõe informação efetivamente fornecida e validada. `REVIEW_REQUIRED` no final não inicia automaticamente nova rodada de perguntas.
+
+### Mapa mental das responsabilidades
+
+```mermaid
+mindmap
+  root((Quality Gate de negócio))
+    Intent
+      Obrigações e intenção documentada
+      Contradição e omissão
+      Mudança de comportamento
+      Conflito e rastreabilidade
+    Security
+      OWASP API Top 10
+      Abuso de fluxos
+      Repetição e concorrência
+      Ciclo de permissões
+      Confiança entre serviços
+      Correlação com scanners
+    Coverage
+      Requisito e cenário
+      Sucesso e rejeição
+      Limites e estados
+      Asserções e fidelidade
+      Evidência de execução
+    Funil em cada etapa
+      Aplicabilidade e evidência
+      Relevância e investigação
+      Agrupamento por causa
+      Classificação por regras
+      Obrigações sempre explícitas
+    Política e auditoria
+      BLOCK
+      REVIEW_REQUIRED
+      WARN
+      PASS
+      Versão e motivos
+    Operador por exceção
+      Dependência indispensável
+      Autorização formal
+      Sem aprovação por etapa
+```
 
 ## Funil dentro de cada etapa
 
@@ -269,6 +364,10 @@ Saída ilustrativa para uma violação comprovada:
 ## Planejamento detalhado de Security
 
 O [Security Gate de APIs](docs/security-planning.md) detalha o catálogo OWASP API Security Top 10 (edição 2023), quatro frentes contextuais complementares, cobertura externa, scripts propostos, regras de triagem, algoritmo e exemplo de encaminhamento. É documentação de planejamento, sem scripts executáveis ou alegação de cobertura comprovada no pipeline corporativo.
+
+## Planejamento detalhado de Coverage
+
+O [Test Coverage Gate](docs/coverage-planning.md) descreve doze dimensões de avaliação, estados separados de descoberta/adequação/execução, scripts propostos, onze regras, pseudocódigo e exemplo completo. Evidência de teste aprovado não comprova automaticamente o comportamento: a matriz preserva cenário, asserções necessárias e escopo da execução.
 
 ## Política final
 
